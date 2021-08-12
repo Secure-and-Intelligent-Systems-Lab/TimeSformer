@@ -36,6 +36,20 @@ default_cfgs = {
     ),
 }
 
+## compute rollout attention function
+def compute_rollout_attention(all_layer_matrices, start_layer=0):
+    # adding residual consideration
+    num_tokens = all_layer_matrices[0].shape[1]
+    batch_size = all_layer_matrices[0].shape[0]
+    eye = torch.eye(num_tokens).expand(batch_size, num_tokens, num_tokens).to(all_layer_matrices[0].device)
+    all_layer_matrices = [all_layer_matrices[i] + eye for i in range(len(all_layer_matrices))]
+    # all_layer_matrices = [all_layer_matrices[i] / all_layer_matrices[i].sum(dim=-1, keepdim=True)
+    #                       for i in range(len(all_layer_matrices))]
+    joint_attention = all_layer_matrices[start_layer]
+    for i in range(start_layer+1, len(all_layer_matrices)):
+        joint_attention = all_layer_matrices[i].bmm(joint_attention)
+    return joint_attention
+
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
         super().__init__()
@@ -53,6 +67,14 @@ class Mlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         return x
+    
+    ##relprop @ MLP
+    def relprop(self, cam, **kwargs):
+        cam = self.drop.relprop(cam, **kwargs)
+        cam = self.fc2.relprop(cam, **kwargs)
+        cam = self.act.relprop(cam, **kwargs)
+        cam = self.fc1.relprop(cam, **kwargs)
+        return cam
 
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., with_qkv=True):
@@ -66,6 +88,44 @@ class Attention(nn.Module):
            self.proj = nn.Linear(dim, dim)
            self.proj_drop = nn.Dropout(proj_drop)
         self.attn_drop = nn.Dropout(attn_drop)
+        
+        ##cam configuration @ Attention
+        self.attn_cam = None
+        self.attn = None
+        self.v = None
+        self.v_cam = None
+        self.attn_gradients = None
+
+    def get_attn(self):
+        return self.attn
+
+    def save_attn(self, attn):
+        self.attn = attn
+
+    def save_attn_cam(self, cam):
+        self.attn_cam = cam
+
+    def get_attn_cam(self):
+        return self.attn_cam
+
+    def get_v(self):
+        return self.v
+
+    def save_v(self, v):
+        self.v = v
+
+    def save_v_cam(self, cam):
+        self.v_cam = cam
+
+    def get_v_cam(self):
+        return self.v_cam
+
+    def save_attn_gradients(self, attn_gradients):
+        self.attn_gradients = attn_gradients
+
+    def get_attn_gradients(self):
+        return self.attn_gradients
+    ##end of cam configurations @ Attention
 
     def forward(self, x):
         B, N, C = x.shape
@@ -85,6 +145,32 @@ class Attention(nn.Module):
            x = self.proj(x)
            x = self.proj_drop(x)
         return x
+    
+    ##relprop @ Attention
+    def relprop(self, cam, **kwargs):
+        cam = self.proj_drop.relprop(cam, **kwargs)
+        cam = self.proj.relprop(cam, **kwargs)
+        cam = rearrange(cam, 'b n (h d) -> b h n d', h=self.num_heads)
+
+        # attn = A*V
+        (cam1, cam_v)= self.matmul2.relprop(cam, **kwargs)
+        cam1 /= 2
+        cam_v /= 2
+
+        self.save_v_cam(cam_v)
+        self.save_attn_cam(cam1)
+
+        cam1 = self.attn_drop.relprop(cam1, **kwargs)
+        cam1 = self.softmax.relprop(cam1, **kwargs)
+
+        # A = Q*K^T
+        (cam_q, cam_k) = self.matmul1.relprop(cam1, **kwargs)
+        cam_q /= 2
+        cam_k /= 2
+
+        cam_qkv = rearrange([cam_q, cam_k, cam_v], 'qkv b h n d -> b n (qkv h d)', qkv=3, h=self.num_heads)
+
+        return self.qkv.relprop(cam_qkv, **kwargs)
 
 class Block(nn.Module):
 
@@ -110,6 +196,12 @@ class Block(nn.Module):
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        
+        ##cam configurations @ Block
+        self.add1 = Add()
+        self.add2 = Add()
+        self.clone1 = Clone()
+        self.clone2 = Clone()
 
 
     def forward(self, x, B, T, W):
@@ -151,6 +243,19 @@ class Block(nn.Module):
             x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
             x = x + self.drop_path(self.mlp(self.norm2(x)))
             return x
+        
+        ##relprop @ Block
+        def relprop(self, cam, **kwargs):
+            (cam1, cam2) = self.add2.relprop(cam, **kwargs)
+            cam2 = self.mlp.relprop(cam2, **kwargs)
+            cam2 = self.norm2.relprop(cam2, **kwargs)
+            cam = self.clone2.relprop((cam1, cam2), **kwargs)
+            
+            (cam1, cam2) = self.add1.relprop(cam, **kwargs)
+            cam2 = self.attn.relprop(cam2, **kwargs)
+            cam2 = self.norm1.relprop(cam2, **kwargs)
+            cam = self.clone1.relprop((cam1, cam2), **kwargs)
+            return cam
 
 class PatchEmbed(nn.Module):
     """ Image to Patch Embedding
@@ -168,11 +273,24 @@ class PatchEmbed(nn.Module):
 
     def forward(self, x):
         B, C, T, H, W = x.shape
+        
+        ### FIXME look at relaxing size constraints
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        ##end of FIXME
+        
         x = rearrange(x, 'b c t h w -> (b t) c h w')
         x = self.proj(x)
         W = x.size(-1)
         x = x.flatten(2).transpose(1, 2)
         return x, T, W
+    
+    #relprop @ PatchEmbed
+    def relprop(self, cam, **kwargs):
+        cam = cam.transpose(1,2)
+        cam = cam.reshape(cam.shape[0], cam.shape[1],
+                     (self.img_size[0] // self.patch_size[0]), (self.img_size[1] // self.patch_size[1]))
+        return self.proj.relprop(cam, **kwargs)
 
 
 class VisionTransformer(nn.Module):
@@ -303,6 +421,83 @@ class VisionTransformer(nn.Module):
         x = self.forward_features(x)
         x = self.head(x)
         return x
+    
+    ##relprop @ VisionTransformer
+    def relprop(self, cam=None,method="transformer_attribution", is_ablation=False, start_layer=0, **kwargs):
+        # print(kwargs)
+        # print("conservation 1", cam.sum())
+        cam = self.head.relprop(cam, **kwargs)
+        cam = cam.unsqueeze(1)
+        cam = self.pool.relprop(cam, **kwargs)
+        cam = self.norm.relprop(cam, **kwargs)
+        for blk in reversed(self.blocks):
+            cam = blk.relprop(cam, **kwargs)
+
+        # print("conservation 2", cam.sum())
+        # print("min", cam.min())
+
+        if method == "full":
+            (cam, _) = self.add.relprop(cam, **kwargs)
+            cam = cam[:, 1:]
+            cam = self.patch_embed.relprop(cam, **kwargs)
+            # sum on channels
+            cam = cam.sum(dim=1)
+            return cam
+
+        elif method == "rollout":
+            # cam rollout
+            attn_cams = []
+            for blk in self.blocks:
+                attn_heads = blk.attn.get_attn_cam().clamp(min=0)
+                avg_heads = (attn_heads.sum(dim=1) / attn_heads.shape[1]).detach()
+                attn_cams.append(avg_heads)
+            cam = compute_rollout_attention(attn_cams, start_layer=start_layer)
+            cam = cam[:, 0, 1:]
+            return cam
+        
+        # our method, method name grad is legacy
+        elif method == "transformer_attribution" or method == "grad":
+            cams = []
+            for blk in self.blocks:
+                grad = blk.attn.get_attn_gradients()
+                cam = blk.attn.get_attn_cam()
+                cam = cam[0].reshape(-1, cam.shape[-1], cam.shape[-1])
+                grad = grad[0].reshape(-1, grad.shape[-1], grad.shape[-1])
+                cam = grad * cam
+                cam = cam.clamp(min=0).mean(dim=0)
+                cams.append(cam.unsqueeze(0))
+            rollout = compute_rollout_attention(cams, start_layer=start_layer)
+            cam = rollout[:, 0, 1:]
+            return cam
+            
+        elif method == "last_layer":
+            cam = self.blocks[-1].attn.get_attn_cam()
+            cam = cam[0].reshape(-1, cam.shape[-1], cam.shape[-1])
+            if is_ablation:
+                grad = self.blocks[-1].attn.get_attn_gradients()
+                grad = grad[0].reshape(-1, grad.shape[-1], grad.shape[-1])
+                cam = grad * cam
+            cam = cam.clamp(min=0).mean(dim=0)
+            cam = cam[0, 1:]
+            return cam
+
+        elif method == "last_layer_attn":
+            cam = self.blocks[-1].attn.get_attn()
+            cam = cam[0].reshape(-1, cam.shape[-1], cam.shape[-1])
+            cam = cam.clamp(min=0).mean(dim=0)
+            cam = cam[0, 1:]
+            return cam
+
+        elif method == "second_layer":
+            cam = self.blocks[1].attn.get_attn_cam()
+            cam = cam[0].reshape(-1, cam.shape[-1], cam.shape[-1])
+            if is_ablation:
+                grad = self.blocks[1].attn.get_attn_gradients()
+                grad = grad[0].reshape(-1, grad.shape[-1], grad.shape[-1])
+                cam = grad * cam
+            cam = cam.clamp(min=0).mean(dim=0)
+            cam = cam[0, 1:]
+            return cam
 
 def _conv_filter(state_dict, patch_size=16):
     """ convert patch embedding weight from manual patchify + linear proj to conv"""
