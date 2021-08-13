@@ -10,6 +10,8 @@ import warnings
 import torch.nn.functional as F
 import numpy as np
 
+from tools.layers_ours import *
+
 from timesformer.models.vit_utils import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timesformer.models.helpers import load_pretrained
 from timesformer.models.vit_utils import DropPath, to_2tuple, trunc_normal_
