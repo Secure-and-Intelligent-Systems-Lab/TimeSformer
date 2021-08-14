@@ -328,7 +328,8 @@ class VisionTransformer(nn.Module):
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
                 drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, attention_type=self.attention_type)
             for i in range(self.depth)])
-        self.norm = norm_layer(embed_dim)
+        self.norm = LayerNorm(embed_dim)
+        #self.norm = norm_layer(embed_dim)
 
         # Classifier head
         self.head = Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
@@ -435,7 +436,7 @@ class VisionTransformer(nn.Module):
         # print("conservation 1", cam.sum())
         cam = self.head.relprop(cam, **kwargs)
         cam = cam.unsqueeze(1)
-        cam = self.pool.relprop(cam, **kwargs)
+        #cam = self.pool.relprop(cam, **kwargs)
         cam = self.norm.relprop(cam, **kwargs)
         for blk in reversed(self.blocks):
             cam = blk.relprop(cam, **kwargs)
