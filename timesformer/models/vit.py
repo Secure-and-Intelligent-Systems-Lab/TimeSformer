@@ -513,7 +513,7 @@ def _conv_filter(state_dict, patch_size=16):
     return out_dict
 
 def vit_base_patch16_224_(pretrained=False, **kwargs):
-    model = VisionTransformer(img_size=224, num_classes=400, patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=num_frames, attention_type=attention_type, **kwargs)
+    model = VisionTransformer(img_size=224, num_classes=400, patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=8, attention_type='divided_space_time', **kwargs)
     model.default_cfg = default_cfgs['vit_base_patch16_224']
     num_patches = (224 // 16) * (224 // 16) #(img_size // patch_size) * (img_size // patch_size)
     if pretrained:
