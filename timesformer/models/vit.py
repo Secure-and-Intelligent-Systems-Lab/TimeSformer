@@ -517,7 +517,7 @@ def vit_base_patch16_224_(pretrained=False, **kwargs):
     model.default_cfg = default_cfgs['vit_base_patch16_224']
     num_patches = (224 // 16) * (224 // 16) #(img_size // patch_size) * (img_size // patch_size)
     if pretrained:
-        load_pretrained(model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=224, num_frames=8, num_patches=num_patches, attention_type='divided_space_time', pretrained_model='')
+        load_pretrained(model, num_classes=model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=224, num_frames=8, num_patches=num_patches, attention_type='divided_space_time', pretrained_model='')
     return model
 
 @MODEL_REGISTRY.register()
