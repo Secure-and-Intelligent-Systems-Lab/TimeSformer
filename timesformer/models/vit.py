@@ -512,6 +512,14 @@ def _conv_filter(state_dict, patch_size=16):
         out_dict[k] = v
     return out_dict
 
+def vit_base_patch16_224_(pretrained=False, **kwargs):
+    model = VisionTransformer(img_size=224, num_classes=400, patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=num_frames, attention_type=attention_type, **kwargs)
+    model.default_cfg = default_cfgs['vit_base_patch16_224']
+    num_patches = (224 // 16) * (224 // 16) #(img_size // patch_size) * (img_size // patch_size)
+    if pretrained:
+        load_pretrained(model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=224, num_frames=8, num_patches=num_patches, attention_type='divided_space_time', pretrained_model='')
+    return model
+
 @MODEL_REGISTRY.register()
 class vit_base_patch16_224(nn.Module):
     def __init__(self, cfg, **kwargs):
@@ -525,7 +533,7 @@ class vit_base_patch16_224(nn.Module):
         self.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
         pretrained_model=cfg.TIMESFORMER.PRETRAINED_MODEL
         if self.pretrained:
-            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
+            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model='')
 
     def forward(self, x):
         x = self.model(x)
