@@ -337,6 +337,8 @@ class VisionTransformer(nn.Module):
         trunc_normal_(self.pos_embed, std=.02)
         trunc_normal_(self.cls_token, std=.02)
         self.apply(self._init_weights)
+        
+        self.pool = IndexSelect()
 
         ## initialization of temporal attention weights
         if self.attention_type == 'divided_space_time':
