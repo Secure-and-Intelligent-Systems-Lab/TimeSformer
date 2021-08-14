@@ -436,7 +436,7 @@ class VisionTransformer(nn.Module):
         # print("conservation 1", cam.sum())
         cam = self.head.relprop(cam, **kwargs)
         cam = cam.unsqueeze(1)
-        #cam = self.pool.relprop(cam, **kwargs)
+        cam = self.pool.relprop(cam, **kwargs)
         cam = self.norm.relprop(cam, **kwargs)
         for blk in reversed(self.blocks):
             cam = blk.relprop(cam, **kwargs)
