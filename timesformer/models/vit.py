@@ -34,10 +34,17 @@ def _cfg(url='', **kwargs):
 
 
 default_cfgs = {
+    # patch models
+    'vit_small_patch16_224': _cfg(
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/vit_small_p16_224-15ec54c9.pth',
+    ),
     'vit_base_patch16_224': _cfg(
         url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_base_p16_224-80ecf9dd.pth',
         mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
     ),
+    'vit_large_patch16_224': _cfg(
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_large_p16_224-4ee7a4dc.pth',
+        mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
 }
 
 ## compute rollout attention function
@@ -86,6 +93,12 @@ class Attention(nn.Module):
         self.num_heads = num_heads
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
+        
+        # A = Q*K^T
+        self.matmul1 = einsum('bhid,bhjd->bhij')
+        # attn = A*V
+        self.matmul2 = einsum('bhij,bhjd->bhid')
+        
         self.with_qkv = with_qkv
         if self.with_qkv:
            self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
