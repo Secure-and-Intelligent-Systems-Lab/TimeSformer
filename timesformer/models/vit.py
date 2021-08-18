@@ -393,6 +393,13 @@ class VisionTransformer(nn.Module):
                       nn.init.constant_(m.temporal_fc.bias, 0)
                     i += 1
 
+    def save_inp_grad(self,grad):
+        self.inp_grad = grad
+
+    def get_inp_grad(self):
+        return self.inp_grad
+    
+    
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
