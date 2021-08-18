@@ -105,6 +105,7 @@ class Attention(nn.Module):
            self.proj = nn.Linear(dim, dim)
            self.proj_drop = nn.Dropout(proj_drop)
         self.attn_drop = nn.Dropout(attn_drop)
+        self.softmax = Softmax(dim=-1)
         
         ##cam configuration @ Attention
         self.attn_cam = None
@@ -153,10 +154,15 @@ class Attention(nn.Module):
            qkv = x.reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
            q, k, v  = qkv, qkv, qkv
 
+        self.save_v(v)
+        
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
+        self.save_attn(attn)
+        attn.register_hook(self.save_attn_gradients)
+        
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         if self.with_qkv:
            x = self.proj(x)
