@@ -378,6 +378,9 @@ class VisionTransformer(nn.Module):
         self.apply(self._init_weights)
         
         self.pool = IndexSelect()
+        self.add = Add()
+        
+        self.inp_grad = None
 
         ## initialization of temporal attention weights
         if self.attention_type == 'divided_space_time':
