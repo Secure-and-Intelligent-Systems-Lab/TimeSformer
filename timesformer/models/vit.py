@@ -462,6 +462,8 @@ class VisionTransformer(nn.Module):
             x = rearrange(x, '(b n) t m -> b (n t) m',b=B,t=T)
             x = torch.cat((cls_tokens, x), dim=1)
 
+        x.register_hook(self.save_inp_grad)
+        
         ## Attention blocks
         for blk in self.blocks:
             x = blk(x, B, T, W)
