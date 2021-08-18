@@ -413,12 +413,12 @@ class VisionTransformer(nn.Module):
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token', 'time_embed'}
 
-    def get_classifier(self):
-        return self.head
+    #def get_classifier(self):
+        #return self.head
 
-    def reset_classifier(self, num_classes, global_pool=''):
-        self.num_classes = num_classes
-        self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+    #def reset_classifier(self, num_classes, global_pool=''):
+        #self.num_classes = num_classes
+        #self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
     def forward_features(self, x):
         B = x.shape[0]
