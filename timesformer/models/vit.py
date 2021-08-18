@@ -439,9 +439,12 @@ class VisionTransformer(nn.Module):
             new_pos_embed = new_pos_embed.flatten(2)
             new_pos_embed = new_pos_embed.transpose(1, 2)
             new_pos_embed = torch.cat((cls_pos_embed, new_pos_embed), 1)
-            x = x + new_pos_embed
+            #x = x + new_pos_embed
+            x = self.add([x, new_pos_embed])
         else:
-            x = x + self.pos_embed
+            #x = x + self.pos_embed
+            x = self.add([x, self.pos_embed])
+            
         x = self.pos_drop(x)
 
 
@@ -455,9 +458,11 @@ class VisionTransformer(nn.Module):
                 time_embed = self.time_embed.transpose(1, 2)
                 new_time_embed = F.interpolate(time_embed, size=(T), mode='nearest')
                 new_time_embed = new_time_embed.transpose(1, 2)
-                x = x + new_time_embed
+                #x = x + new_time_embed
+                x = self.add([x, new_time_embed])
             else:
-                x = x + self.time_embed
+                #x = x + self.time_embed
+                x = self.add([x, self.time_embed])
             x = self.time_drop(x)
             x = rearrange(x, '(b n) t m -> b (n t) m',b=B,t=T)
             x = torch.cat((cls_tokens, x), dim=1)
