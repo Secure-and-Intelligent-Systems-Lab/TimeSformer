@@ -203,7 +203,7 @@ class Block(nn.Module):
         self.attention_type = attention_type
         assert(attention_type in ['divided_space_time', 'space_only','joint_space_time'])
 
-        self.norm1 = norm_layer(dim)
+        self.norm1 = norm_layer(dim, eps=1e-6)
         self.attn = Attention(
            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
 
@@ -216,7 +216,7 @@ class Block(nn.Module):
 
         ## drop path
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.norm2 = norm_layer(dim)
+        self.norm2 = norm_layer(dim, eps=1e-6)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
         
@@ -232,9 +232,17 @@ class Block(nn.Module):
         H = num_spatial_tokens // W
 
         if self.attention_type in ['space_only', 'joint_space_time']:
-            x = x + self.drop_path(self.attn(self.norm1(x)))
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+            
+            #x = x + self.drop_path(self.attn(self.norm1(x)))
+            x1, x2 = self.clone1(x, 2)
+            x = self.add1([x1, self.drop_path(self.attn(self.norm1(x2)))])
+            
+            #x = x + self.drop_path(self.mlp(self.norm2(x)))
+            x1, x2 = self.clone2(x, 2)
+            x = self.add2([x1, self.drop_path(self.mlp(self.norm2(x2)))])
+            
             return x
+        
         elif self.attention_type == 'divided_space_time':
             ## Temporal
             xt = x[:,1:,:]
@@ -242,7 +250,8 @@ class Block(nn.Module):
             res_temporal = self.drop_path(self.temporal_attn(self.temporal_norm1(xt)))
             res_temporal = rearrange(res_temporal, '(b h w) t m -> b (h w t) m',b=B,h=H,w=W,t=T)
             res_temporal = self.temporal_fc(res_temporal)
-            xt = x[:,1:,:] + res_temporal
+            #xt = x[:,1:,:] + res_temporal
+            xt = self.add1([x[:,1:,:], res_temporal])
 
             ## Spatial
             init_cls_token = x[:,0,:].unsqueeze(1)
@@ -264,7 +273,10 @@ class Block(nn.Module):
 
             ## Mlp
             x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+            x1, x2 = self.clone2(x, 2)
+            #x = x + self.drop_path(self.mlp(self.norm2(x)))
+            x = self.add2([x1, self.drop_path(self.mlp(self.norm2(x2)))])
+            
             return x
         
     ##relprop @ Block
