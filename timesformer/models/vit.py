@@ -332,7 +332,7 @@ class VisionTransformer(nn.Module):
     """ Vision Transformere
     """
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
-                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
+                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, mlp_head=False, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0.1, hybrid_backbone=None, norm_layer=nn.LayerNorm, num_frames=8, attention_type='divided_space_time', dropout=0.):
         super().__init__()
         self.attention_type = attention_type
@@ -363,8 +363,15 @@ class VisionTransformer(nn.Module):
         #self.norm = norm_layer(embed_dim)
 
         # Classifier head
-        self.head = Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        #self.head = Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
         #self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        
+        if mlp_head:
+            # paper diagram suggests 'MLP head', but results in 4M extra parameters vs paper
+            self.head = Mlp(embed_dim, int(embed_dim * mlp_ratio), num_classes)
+        else:
+            # with a single Linear layer as head, the param count within rounding of paper
+            self.head = Linear(embed_dim, num_classes)
 
         trunc_normal_(self.pos_embed, std=.02)
         trunc_normal_(self.cls_token, std=.02)
