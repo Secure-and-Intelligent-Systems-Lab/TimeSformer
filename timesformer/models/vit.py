@@ -479,8 +479,8 @@ class VisionTransformer(nn.Module):
             x = torch.mean(x, 1) # averaging predictions for every frame
 
         x = self.norm(x)
-        x = self.pool(x, dim=1, indices=torch.tensor(0, device=x.device))
-        x = x.squeeze(1)
+        #x = self.pool(x, dim=1, indices=torch.tensor(0, device=x.device))
+        #x = x.squeeze(1)
         return x[:, 0]
 
     def forward(self, x):
