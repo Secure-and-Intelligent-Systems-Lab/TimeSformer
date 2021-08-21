@@ -423,8 +423,8 @@ class VisionTransformer(nn.Module):
     def forward_features(self, x):
         B = x.shape[0]
         x, T, W = self.patch_embed(x)
-        #cls_tokens = self.cls_token.expand(x.size(0), -1, -1)
-        cls_tokens = self.cls_token.expand(B, -1, -1)
+        cls_tokens = self.cls_token.expand(x.size(0), -1, -1)
+        #cls_tokens = self.cls_token.expand(B, -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
 
         ## resizing the positional embeddings in case they don't match the input at inference
