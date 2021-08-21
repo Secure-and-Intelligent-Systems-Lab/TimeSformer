@@ -482,7 +482,7 @@ class VisionTransformer(nn.Module):
         x = self.norm(x)
         x = self.pool(x, dim=1, indices=torch.tensor(0, device=x.device))
         x = x.squeeze(1)
-        x = torch.nn.Linear(self.embed_dim, self.num_classes)(x)
+        x = torch.nn.Linear(768, 1000)(x)
         return x
         #return x[0, :]
 
