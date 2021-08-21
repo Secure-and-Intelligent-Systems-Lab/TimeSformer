@@ -420,7 +420,8 @@ class VisionTransformer(nn.Module):
         #self.num_classes = num_classes
         #self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
-    def forward_features(self, x):
+    def forward(self, x):
+    #def forward_features(self, x):
         B = x.shape[0]
         x, T, W = self.patch_embed(x)
         cls_tokens = self.cls_token.expand(x.size(0), -1, -1)
@@ -481,13 +482,13 @@ class VisionTransformer(nn.Module):
         x = self.norm(x)
         x = self.pool(x, dim=1, indices=torch.tensor(0, device=x.device))
         x = x.squeeze(1)
-        return x[:, 0]
+        return x
         #return x[0, :]
 
-    def forward(self, x):
-        x = self.forward_features(x)
-        #x = self.head(x)
-        return x
+    #def forward(self, x):
+        #x = self.forward_features(x)
+        ##x = self.head(x)
+        #return x
     
     ##relprop @ VisionTransformer
     def relprop(self, cam=None,method="transformer_attribution", is_ablation=False, start_layer=0, **kwargs):
