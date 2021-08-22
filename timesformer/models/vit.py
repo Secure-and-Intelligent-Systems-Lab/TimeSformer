@@ -61,6 +61,19 @@ def compute_rollout_attention(all_layer_matrices, start_layer=0):
         joint_attention = all_layer_matrices[i].bmm(joint_attention)
     return joint_attention
 
+class RelProp(nn.Module):
+    def __init__(self):
+        super(RelProp, self).__init__()
+        # if not self.training:
+        self.register_forward_hook(forward_hook)
+
+    def gradprop(self, Z, X, S):
+        C = torch.autograd.grad(Z, X, S, retain_graph=True)
+        return C
+
+    def relprop(self, R, alpha):
+        return R
+
 class Dropout(nn.Dropout, RelProp):
     pass
 
