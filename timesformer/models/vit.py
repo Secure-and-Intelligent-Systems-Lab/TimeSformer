@@ -84,7 +84,7 @@ class Mlp(nn.Module):
         hidden_features = hidden_features or in_features
         self.fc1 = nn.Linear(in_features, hidden_features)
         self.act = act_layer()
-        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.fc2 = Linear(hidden_features, out_features)
         self.drop = Dropout(drop)
 
     def forward(self, x):
