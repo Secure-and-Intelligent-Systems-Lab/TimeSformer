@@ -219,13 +219,13 @@ class Block(nn.Module):
         self.attention_type = attention_type
         assert(attention_type in ['divided_space_time', 'space_only','joint_space_time'])
 
-        self.norm1 = norm_layer(dim, eps=1e-6)
+        self.norm1 = LayerNorm(dim, eps=1e-6)
         self.attn = Attention(
            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
 
         ## Temporal Attention Parameters
         if self.attention_type == 'divided_space_time':
-            self.temporal_norm1 = norm_layer(dim)
+            self.temporal_norm1 = LayerNorm(dim)
             self.temporal_attn = Attention(
               dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
             self.temporal_fc = nn.Linear(dim, dim)
@@ -349,7 +349,7 @@ class VisionTransformer(nn.Module):
     """
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, mlp_head=False, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0.1, hybrid_backbone=None, norm_layer=nn.LayerNorm, num_frames=8, attention_type='divided_space_time', dropout=0.):
+                 drop_path_rate=0.1, hybrid_backbone=None, num_frames=8, attention_type='divided_space_time', dropout=0.):
         super().__init__()
         self.attention_type = attention_type
         self.depth = depth
@@ -373,7 +373,7 @@ class VisionTransformer(nn.Module):
         self.blocks = nn.ModuleList([
             Block(
                 dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
-                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, attention_type=self.attention_type)
+                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], attention_type=self.attention_type)
             for i in range(self.depth)])
         self.norm = LayerNorm(embed_dim)
         #self.norm = norm_layer(embed_dim)
@@ -596,7 +596,7 @@ def _conv_filter(state_dict, patch_size=16):
     return out_dict
 
 def vit_base_patch16_224_(pretrained=False, **kwargs):
-    model = VisionTransformer(img_size=224, num_classes=400, patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=8, attention_type='divided_space_time', **kwargs)
+    model = VisionTransformer(img_size=224, num_classes=1000,patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=8, attention_type='divided_space_time', **kwargs)
     model.default_cfg = default_cfgs['vit_base_patch16_224']
     num_patches = (224 // 16) * (224 // 16) #(img_size // patch_size) * (img_size // patch_size)
     if pretrained:
@@ -609,7 +609,7 @@ class vit_base_patch16_224(nn.Module):
         super(vit_base_patch16_224, self).__init__()
         self.pretrained=True
         patch_size = 16
-        self.model = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES, patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES, attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
+        self.model = VisionTransformer(img_size=cfg.DATA.TRAIN_CROP_SIZE, num_classes=cfg.MODEL.NUM_CLASSES, patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=cfg.DATA.NUM_FRAMES, attention_type=cfg.TIMESFORMER.ATTENTION_TYPE, **kwargs)
 
         self.attention_type = cfg.TIMESFORMER.ATTENTION_TYPE
         self.model.default_cfg = default_cfgs['vit_base_patch16_224']
@@ -624,10 +624,10 @@ class vit_base_patch16_224(nn.Module):
 
 @MODEL_REGISTRY.register()
 class TimeSformer(nn.Module):
-    def __init__(self, img_size=224, patch_size=16, num_classes=400, num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs):
+    def __init__(self, img_size=224, patch_size=16, num_classes=1000,num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs): 
         super(TimeSformer, self).__init__()
         self.pretrained=True
-        self.model = VisionTransformer(img_size=img_size, num_classes=num_classes, patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=num_frames, attention_type=attention_type, **kwargs)
+        self.model = VisionTransformer(img_size=img_size, num_classes=num_classes, patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=num_frames, attention_type=attention_type, **kwargs)
 
         self.attention_type = attention_type
         self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']
