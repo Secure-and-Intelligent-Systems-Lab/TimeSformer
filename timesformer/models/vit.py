@@ -293,7 +293,7 @@ class Block(nn.Module):
             #x = x + self.drop_path(self.mlp(self.norm2(x)))
             x = self.add2([x1, self.drop_path(self.mlp(self.norm2(x2)))])
             
-            return x
+            return x[:,1:,:]
         
     ##relprop @ Block
     def relprop(self, cam, **kwargs):
