@@ -172,7 +172,8 @@ class Attention(nn.Module):
 
         self.save_v(v)
         
-        attn = (q @ k.transpose(-2, -1)) * self.scale
+        #attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = self.matmul1([q, k]) * self.scale
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
