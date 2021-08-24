@@ -264,7 +264,7 @@ class Block(nn.Module):
         
         elif self.attention_type == 'divided_space_time':
             ## Temporal
-            xt0, xs0 = clone1(x, 2)
+            xt0, xs0 = self.clone1(x, 2)
             xt = xt0[:,1:,:]
             xt = rearrange(xt, 'b (h w t) m -> (b h w) t m',b=B,h=H,w=W,t=T)
             res_temporal = self.drop_path(self.temporal_attn(self.temporal_norm1(xt)))
