@@ -179,7 +179,9 @@ class Attention(nn.Module):
         self.save_attn(attn)
         attn.register_hook(self.save_attn_gradients)
         
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        #x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.matmul2([attn, v])
+        x = rearrange(x, 'b h n d -> b n (h d)')
         if self.with_qkv:
            x = self.proj(x)
            x = self.proj_drop(x)
