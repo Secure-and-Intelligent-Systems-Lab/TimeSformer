@@ -276,7 +276,7 @@ class Block(nn.Module):
             init_cls_token = x[:,0,:].unsqueeze(1)
             cls_token = init_cls_token.repeat(1, T, 1)
             cls_token = rearrange(cls_token, 'b t m -> (b t) m',b=B,t=T).unsqueeze(1)
-            xs = xt
+            xs, x = self.clone1(xt, 2)
             xs = rearrange(xs, 'b (h w t) m -> (b t) (h w) m',b=B,h=H,w=W,t=T)
             xs = torch.cat((cls_token, xs), 1)
             res_spatial = self.drop_path(self.attn(self.norm1(xs)))
@@ -288,7 +288,6 @@ class Block(nn.Module):
             res_spatial = res_spatial[:,1:,:]
             res_spatial = rearrange(res_spatial, '(b t) (h w) m -> b (h w t) m',b=B,h=H,w=W,t=T)
             res = res_spatial
-            x = xt
 
             ## Mlp
             #x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
