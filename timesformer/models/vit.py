@@ -266,8 +266,8 @@ class Block(nn.Module):
             res_temporal = self.drop_path(self.temporal_attn(self.temporal_norm1(xt)))
             res_temporal = rearrange(res_temporal, '(b h w) t m -> b (h w t) m',b=B,h=H,w=W,t=T)
             res_temporal = self.temporal_fc(res_temporal)
-            #xt = x[:,1:,:] + res_temporal
-            xt = self.add1([x[:,1:,:], res_temporal])
+            xt = x[:,1:,:] + res_temporal
+            #xt = self.add1([x[:,1:,:], res_temporal])
 
             ## Spatial
             init_cls_token = x[:,0,:].unsqueeze(1)
@@ -288,7 +288,8 @@ class Block(nn.Module):
             x = xt
 
             ## Mlp
-            x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
+            #x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
+            x = add1([torch.cat((init_cls_token, x00), 1), torch.cat((cls_token2, res), 1)])
             x1, x2 = self.clone2(x, 2)
             #x = x + self.drop_path(self.mlp(self.norm2(x)))
             x = self.add2([x1, self.drop_path(self.mlp(self.norm2(x2)))])
