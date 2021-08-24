@@ -117,10 +117,10 @@ class Attention(nn.Module):
         
         self.with_qkv = with_qkv
         if self.with_qkv:
-           self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-           self.proj = nn.Linear(dim, dim)
-           self.proj_drop = nn.Dropout(proj_drop)
-        self.attn_drop = nn.Dropout(attn_drop)
+           self.qkv = Linear(dim, dim * 3, bias=qkv_bias)
+           self.proj = Linear(dim, dim)
+           self.proj_drop = Dropout(proj_drop)
+        self.attn_drop = Dropout(attn_drop)
         self.softmax = Softmax(dim=-1)
         
         ##cam configuration @ Attention
