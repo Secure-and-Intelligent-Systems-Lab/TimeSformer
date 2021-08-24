@@ -289,7 +289,7 @@ class Block(nn.Module):
 
             ## Mlp
             #x = torch.cat((init_cls_token, x), 1) + torch.cat((cls_token, res), 1)
-            x = self.add1([torch.cat((init_cls_token, x00), 1), torch.cat((cls_token2, res), 1)])
+            x = self.add1([torch.cat((init_cls_token, x), 1), torch.cat((cls_token2, res), 1)])
             x1, x2 = self.clone2(x, 2)
             #x = x + self.drop_path(self.mlp(self.norm2(x)))
             x = self.add2([x1, self.drop_path(self.mlp(self.norm2(x2)))])
