@@ -651,3 +651,8 @@ class TimeSformer(nn.Module):
     def forward(self, x):
         x = self.model(x)
         return x
+    
+    #relprop @ TimeSformer
+    def relprop(self, cam, **kwargs):
+        cam = self.model.relprop(cam, **kwargs)
+        return cam
