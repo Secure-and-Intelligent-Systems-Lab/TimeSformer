@@ -628,6 +628,14 @@ class vit_base_patch16_224(nn.Module):
         x = self.model(x)
         return x
 
+def times_former(pretrained=True, pretrained_model='', **kwargs):
+    model = VisionTransformer(img_size=224, num_classes=1000,patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=8, attention_type='divided_space_time', **kwargs)
+    model.default_cfg = default_cfgs['vit_base_patch16_224']
+    num_patches = (224 // 16) * (224 // 16) #(img_size // patch_size) * (img_size // patch_size)
+    if pretrained:
+        load_pretrained(model, num_classes=model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=224, num_frames=8, num_patches=num_patches, attention_type='divided_space_time', pretrained_model='')
+    return model    
+
 @MODEL_REGISTRY.register()
 class TimeSformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, num_classes=1000,num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs): 
