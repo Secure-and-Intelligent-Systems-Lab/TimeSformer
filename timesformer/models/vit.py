@@ -649,8 +649,8 @@ class TimeSformer(nn.Module):
         if self.pretrained:
             load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=img_size, num_frames=num_frames, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
     def forward(self, x):
-        x = self.model(x)
-        return x
+        x, x1 = self.model(x)
+        return x, x1
     
     #relprop @ TimeSformer
     def relprop(self, cam, **kwargs):
