@@ -503,9 +503,9 @@ class VisionTransformer(nn.Module):
 
         x = self.norm(x)
         x = self.pool(x, dim=1, indices=torch.tensor(0, device=x.device))
-        x = x.squeeze(1)
-        x = self.head(x)
-        return x
+        x1 = x.squeeze(1) #features vector
+        x = self.head(x1)
+        return x, x1
         #return x[0, :]
 
     #def forward(self, x):
